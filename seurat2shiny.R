@@ -48,7 +48,7 @@ seurat2shiny = function(
     if ( ! slot %in% c("counts", "data", "scale.data") )
         stop("'slot' not in the Seurat object's available slots.");
 
-    # Extract 2D cordinates.
+    # Extract 2D coordinates.
     embeds = as.data.frame(object@reductions[[reduction]]@cell.embeddings);
     names(embeds) = c("coord_x", "coord_y");
 
