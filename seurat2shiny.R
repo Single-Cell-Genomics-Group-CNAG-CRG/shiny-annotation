@@ -10,14 +10,14 @@
 #' @param assay Character string. Assay within the Seurat object from which to extract the expression matrix. Default: active assay.
 #' @param reduction Character string. Dimensionality reduction from which to extract the 2D coordinates. Default: umap.
 #' @param slot Character string. Slot containing the expression matrix. Default: data.
-#' @param asfactors Logical value. Transform numeric variables in metadata to factors. Default: TRUE.
+#' @param asfactors Character vector. Metadata columns to be converted to factors. Default: NULL.
 #' @param save Logical value. Save metadata and expression matrix objects as RDS files. Default: TRUE.
 #' @param path Character string. Path to save output files if 'save = TRUE'. Default: working directory.
 #'
 #' @return Named list containing the joint metadata + 2D embeding and the expression matrix.
 #'
 #' @examples
-#' seurat2shiny(object = seurat_object)
+#' seurat2shiny( object = seurat_object, asfactors = c("plate", "replicate") )
 #'
 #' shiny_list = seurat2shiny(object = seurat_object)
 #'
@@ -29,7 +29,7 @@ seurat2shiny = function(
     assay     = object@active.assay,
     reduction = "umap"             ,
     slot      = "data"             ,
-    asfactors = TRUE               ,
+    asfactors = NULL               ,
     save      = TRUE               ,
     path      = "."                  # path = getwd()
 ) {
@@ -55,12 +55,8 @@ seurat2shiny = function(
     # Join metadata with coordinates.
     metadata = object@meta.data;
 
-    if (asfactor) {
-        for ( col in names(metadata) ) {
-            if ( is.numeric(metadata[[col]]) ) {
-                metadata[[col]] = as.factor(metadata[[col]]);
-            };
-        };
+    for (col in asfactors) {
+        metadata[[col]] = as.factor(metadata[[col]]);
     };
 
     metadata = merge(x = metadata, y = embeds, by = "row.names");
