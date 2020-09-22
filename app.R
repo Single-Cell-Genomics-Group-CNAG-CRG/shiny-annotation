@@ -261,7 +261,7 @@ server <- function(input, output, session) {
   
   output$text3 <- renderUI({
     HTML("<p>This App is designed to take in 2 RDS files, one containing the metadata of the cells and the second containing the gene expression matrix of choice.<br/>
-    These RDS objects can be obtained using the function found <a href='https://github.com/MarcElosua/Shiny_annotation/blob/master/seurat_preprocess_fun.R'> <B>here</B></a>!<br/>
+    These RDS objects can be obtained using the function found <a href='https://github.com/Single-Cell-Genomics-Group-CNAG-CRG/Shiny_annotation/blob/master/seurat2shiny.R'> <B>here</B></a>!<br/>
     <B>Before visualizing the plots</B> for the 1st time one must click the update buttons selecting <i>genes of interest</i>, <i>grouping variable</i>, <i>filtering variable</i> and <i>filtering selection</i></p>")
   })
   
