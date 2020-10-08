@@ -4,7 +4,7 @@
 #'      1. Metadata + coordinates of the 2D embeding.
 #'      2. Expression matrix of the selected slot.
 #'
-#' ShinyApp: https://singlecellgenomics-cnag-crg.shinyapps.io/Annotation
+#' ShinyApp: https://github.com/Single-Cell-Genomics-Group-CNAG-CRG/shiny-annotation/blob/main/seurat2shiny.R
 #'
 #' @param object Object of class Seurat. Mandatory.
 #' @param assay Character string. Assay within the Seurat object from which to extract the expression matrix. Default: active assay.
@@ -49,18 +49,19 @@ seurat2shiny = function(
         stop("'slot' not in the Seurat object's available slots.");
 
     # Extract 2D coordinates.
-    embeds = as.data.frame(object@reductions[[reduction]]@cell.embeddings);
-    names(embeds) = c("coord_x", "coord_y");
+    embeds <- as.data.frame(object@reductions[[reduction]]@cell.embeddings);
+    names(embeds) <- c("coord_x", "coord_y");
 
     # Join metadata with coordinates.
-    metadata = object@meta.data;
+    metadata <- object@meta.data;
 
     for (col in asfactors) {
-        metadata[[col]] = as.factor(metadata[[col]]);
+        metadata[[col]] <- as.factor(metadata[[col]]);
     };
 
-    metadata = merge(x = metadata, y = embeds, by = "row.names");
-    names(metadata)[1] = "barcode"; # names(metadata)[names(metadata) == "Row.names"] = "barcode";
+    metadata <- merge(x = metadata, y = embeds, by = "row.names");
+    names(metadata)[1] <-  "barcode"; # names(metadata)[names(metadata) == "Row.names"] = "barcode";
+    rownames(metadata) <- metadata$barcode
 
     # Extract expression data.
     # expression = as.matrix( Seurat::GetAssayData(object = object, slot = slot, assay = assay) );
@@ -77,4 +78,4 @@ seurat2shiny = function(
     invisible(
         list(metadata = metadata, expression = expression)
     );
-};
+}
