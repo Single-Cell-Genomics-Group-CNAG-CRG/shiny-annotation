@@ -11,6 +11,7 @@ library(scattermore)
 
 # Metadata dataframe set as NULL at the beginning to avoid showing error
 if (! exists("metadata_df")) metadata_df <- NULL
+if (! exists("expr_mtrx")) expr_mtrx <- NULL
 
 ## Only run examples in interactive R sessions
 # if (interactive()) {
@@ -72,6 +73,23 @@ ui <- fluidPage(
                   max = 10,
                   value = 3,
                   step = 0.1),
+     
+     # Select gene to to filter expression
+     selectizeInput("gene_filt", "Gene to filter:",
+                    selected = NULL,
+                    choices = NULL,
+                    options = list(create = TRUE),
+                    multiple = FALSE),
+     actionButton(inputId = "apply_expr_filt",
+                  label = "Update gene slider"),
+     
+     # Slider to filter by gene expression
+     sliderInput("expression_slider",
+                 label = "Gene expression filter",
+                 min = 0, 
+                 max = 10,
+                 step = 0.5,
+                 value = c(0, 10)),
       
       # Which labels to add to interactive output
       selectizeInput("filter_var", "Filtering group:",
@@ -154,6 +172,13 @@ server <- function(input, output, session) {
                          choices = c("", rownames(expr_mtrx)),
                          selected = rownames(expr_mtrx)[1])
     
+    # Update filter gene
+    updateSelectizeInput(session,
+                         inputId = "gene_filt",
+                         choices = rownames(expr_mtrx),
+                         selected = rownames(expr_mtrx)[1])
+    
+    
     # Subset character/factor columns with <= 50 unique values
     feat_ch1 <- sapply(metadata_df, function(x) length(unique(x)) <= 50)
     feat_ch2 <- sapply(colnames(metadata_df), function(x) !is.numeric(metadata_df[, x]))
@@ -182,6 +207,17 @@ server <- function(input, output, session) {
     
   })
   
+  # Independent observe event for Gene expression slider event input so it doesn't update all the rest  
+  observe({
+    # Here we want to update the slider to filter by gene expression
+    updateSliderInput(session, 
+                      inputId = "expression_slider",
+                      value = 0,
+                      min = 0,
+                      max = max(expr_mtrx[gene_filt(), ]),
+                      step = 0.1)
+  })
+  
   # Independent observe event for checkbox input so it doesn't update all the rest
   observe({
     # Update Filtering groups
@@ -206,6 +242,11 @@ server <- function(input, output, session) {
   filter_var <- eventReactive(input$apply_filter, {
     input$filter_var
   })
+  
+  gene_filt <- eventReactive(input$apply_expr_filt, {
+    input$gene_filt
+  })
+  
   
   apply_grp <- eventReactive(input$apply_grp, {
     input$filter_grp
@@ -297,6 +338,13 @@ server <- function(input, output, session) {
     # Read data from reactive observed slots
     metadata_df <- dfInput()
     expr_mtrx <- exprInput()
+    
+    # Subset by gene expression
+    mask <- expr_mtrx[gene_filt(), ] > input$expression_slider[1] &
+      expr_mtrx[gene_filt(), ] < input$expression_slider[2]
+    
+    expr_mtrx <- expr_mtrx[, mask]
+    metadata_df <- metadata_df[mask, ]
 
     ## Plot all genes
     plt_ls <- lapply(gene_list(), function(gene) {
@@ -312,7 +360,8 @@ server <- function(input, output, session) {
                                         pixels = c(1000,1000),
                                         interpolate = TRUE) +
           ggplot2::scale_color_gradient(low = "lightgrey",
-                                        high = "blue") +
+                                        high = "blue",
+                                        limits = c(0, max(expr_mtrx[gene, ]))) +
           ggplot2::theme_classic() +
           ggplot2::labs(
             title = gene,
@@ -343,6 +392,14 @@ server <- function(input, output, session) {
     # Read data from reactive observed slots
     metadata_df <- dfInput()
     expr_mtrx <- exprInput()
+    
+    # Subset by gene expression
+    mask <- expr_mtrx[gene_filt(), ] > input$expression_slider[1] &
+      expr_mtrx[gene_filt(), ] < input$expression_slider[2]
+    
+    expr_mtrx <- expr_mtrx[, mask]
+    metadata_df <- metadata_df[mask, ]
+    
     
     nb.cols <- length(unique(metadata_df[, groupby_var()]))
     set2_expand <- colorRampPalette(RColorBrewer::brewer.pal(8, "Set2"))(nb.cols)
