@@ -8,6 +8,7 @@ library(plotly)
 library(RColorBrewer)
 library(profvis)
 library(scattermore)
+library(DT)
 
 # Metadata dataframe set as NULL at the beginning to avoid showing error
 if (! exists("metadata_df")) metadata_df <- NULL
@@ -126,6 +127,7 @@ ui <- fluidPage(
                  plotOutput("FeaturePlot", height = "800")),
         tabPanel(title = "Violin Plots",
                  plotOutput("ViolinPlot", height = "800")),
+        # Adding Differential Expression Tab
         tabPanel(title = "DE",
                  sidebarLayout(
                    sidebarPanel(width = 3,
@@ -135,6 +137,8 @@ ui <- fluidPage(
                                                choices = NULL,
                                                options = list(create = TRUE),
                                                multiple = FALSE),
+                                actionButton(inputId = "update_indents",
+                                             label = "Update groups"),
                                 
                                 # Variables specifying groups
                                 selectizeInput("de_g1", "Group 1:",
@@ -152,7 +156,7 @@ ui <- fluidPage(
                                 
                                 ),
                    mainPanel(
-                     dataTableOutput("de_table"))
+                     DTOutput("de_table"))
                    )
                  )
         )
@@ -195,7 +199,7 @@ server <- function(input, output, session) {
     if( is.null( file2 ) ) { return() }
     tmp2_ds <- readRDS(file2$datapath)
     expr_mtrx <<- as.matrix(tmp2_ds)
-
+    
     # Update marker selection
     updateSelectizeInput(session,
                          inputId = "gene_ls",
@@ -248,7 +252,8 @@ server <- function(input, output, session) {
     
     # Exrtact metadata features + groups
     # Subset colnames
-    de_vr <- colnames(metadata_df)
+    mask <- sapply(metadata_df, function(x) length(unique(x)) <= 50)
+    de_vr <- names(mask)[mask]
     
     # Update Filtering variable selection
     updateSelectizeInput(session,
@@ -315,7 +320,6 @@ server <- function(input, output, session) {
     input$gene_filt
   })
   
-  
   apply_grp <- eventReactive(input$apply_grp, {
     input$filter_grp
   })
@@ -332,17 +336,17 @@ server <- function(input, output, session) {
   })
   
   # Differential expression
-  de_var <- eventReactive(input$do_de, {
+  de_var <- eventReactive(input$update_indents, {
     input$de_var
   })
   
-  # de_g1 <- eventReactive(input$do_de, {
-  #   input$de_g1
-  # })
-  # 
-  # de_g2 <- eventReactive(input$do_de, {
-  #   input$de_g2
-  # })
+  de_g1 <- eventReactive(input$do_de, {
+    input$de_g1
+  })
+
+  de_g2 <- eventReactive(input$do_de, {
+    input$de_g2
+  })
   
   ###########################################
   ######### 1st tab App description #########
@@ -495,6 +499,7 @@ server <- function(input, output, session) {
                                  color = metadata_df[, groupby_var()],
                                  fill = metadata_df[, groupby_var()]),
                              alpha = 0.6) +
+        ggplot2::ylim(c(0, max(expr_mtrx[gene, ]))) +
         ggplot2::scale_color_manual(values = set2_expand) +
         ggplot2::scale_fill_manual(values = set2_expand) +
         ggplot2::theme_classic() +
@@ -521,18 +526,29 @@ server <- function(input, output, session) {
   })
   
   # Differential Expression Table
-  output$de_table <- renderDataTable({
+  output$de_table <- renderDT({
+    # Some old verision metadatas don't have column names but they are save in the "barcode" column
+    # I've updated seurat2shiny so now the metadata has rownames. In time this If can disappear.
+    
+    # If all the rownames in metadata are in the columns of expression matrix go ahead,
+    # if not and barcode is a column in metadata assign it to rownames
+    if(sum(rownames(metadata_df) %in% colnames(expr_mtrx)) != nrow(metadata_df) & 
+       "barcode" %in% colnames(metadata_df)) {
+      rownames(metadata_df) <- metadata_df$barcode
+    }
+    
     se_obj <- Seurat::CreateSeuratObject(counts = expr_mtrx,
                                          meta.data = metadata_df)
+    
     Seurat::Idents(se_obj) <- metadata_df[, de_var()]
-    markers <- Seurat::FindMarkers(object = expr_mtrx,
-                                   ident.1 = de_g1,
-                                   ident.2 = de_g1)
+    
+    markers <- Seurat::FindMarkers(object = se_obj,
+                                   ident.1 = de_g1(),
+                                   ident.2 = de_g2())
     DT::datatable(markers,
                   filter = "top",
                   options = list(
                     lengthMenu = c(10, 25, 50),
-                    columnDefs = list(className = 'dt-center'),
                     pageLength = 5)
                   )
   })
