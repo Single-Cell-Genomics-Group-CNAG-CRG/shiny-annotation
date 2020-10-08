@@ -101,7 +101,8 @@ ui <- fluidPage(
       actionButton(inputId = "apply_filter", label = "Update variable"),
       
       # Which groups to keep
-      checkboxGroupInput("filter_grp", "Groups to include:",
+      checkboxGroupInput(inputId = "filter_grp",
+                         label = "Groups to include:",
                          choices = "",
                          selected = NULL),
       
@@ -124,11 +125,40 @@ ui <- fluidPage(
         tabPanel(title = "Feature Plots",
                  plotOutput("FeaturePlot", height = "800")),
         tabPanel(title = "Violin Plots",
-                 plotOutput("ViolinPlot", height = "800"))
+                 plotOutput("ViolinPlot", height = "800")),
+        tabPanel(title = "DE",
+                 sidebarLayout(
+                   sidebarPanel(width = 3,
+                                # Variables specifying groups
+                                selectizeInput("de_var", "DE group:",
+                                               selected = NULL,
+                                               choices = NULL,
+                                               options = list(create = TRUE),
+                                               multiple = FALSE),
+                                
+                                # Variables specifying groups
+                                selectizeInput("de_g1", "Group 1:",
+                                               selected = NULL,
+                                               choices = NULL,
+                                               options = list(create = TRUE),
+                                               multiple = FALSE),
+                                selectizeInput("de_g2", "Group 2:",
+                                               selected = NULL,
+                                               choices = NULL,
+                                               options = list(create = TRUE),
+                                               multiple = FALSE),
+                                actionButton(inputId = "do_de",
+                                             label = "Run DE"),
+                                
+                                ),
+                   mainPanel(
+                     dataTableOutput("de_table"))
+                   )
+                 )
+        )
       )
     )
   )
-)
 
 ##################################################################################################################
 ##################################################################################################################
@@ -207,6 +237,44 @@ server <- function(input, output, session) {
     
   })
   
+  # Differential expression analysis update
+  observe({
+    
+    # Load data
+    file1 <- input$metadata
+    if (is.null(file1) ) { return() }
+    tmp1_ds <- readRDS(file1$datapath)
+    metadata_df <<- tmp1_ds
+    
+    # Exrtact metadata features + groups
+    # Subset colnames
+    de_vr <- colnames(metadata_df)
+    
+    # Update Filtering variable selection
+    updateSelectizeInput(session,
+                         inputId = "de_var",
+                         choices = c("", 
+                                     de_vr),
+                         selected = de_vr[1])
+  })
+  
+  observe({
+    vr_groups <- unique(metadata_df[, de_var()])
+    # Update Filtering variable selection
+    updateSelectizeInput(session,
+                         inputId = "de_g1",
+                         choices = c("",
+                                     vr_groups),
+                         selected = vr_groups[1])
+    
+    # Update Filtering variable selection
+    updateSelectizeInput(session,
+                         inputId = "de_g2",
+                         choices = c("", 
+                                     vr_groups),
+                         selected = vr_groups[2])
+  })
+  
   # Independent observe event for Gene expression slider event input so it doesn't update all the rest  
   observe({
     # Here we want to update the slider to filter by gene expression
@@ -262,6 +330,20 @@ server <- function(input, output, session) {
     keep_id <- metadata_df[metadata_df[, filter_var()] %in% apply_grp(), "barcode"]
     expr_mtrx[, keep_id]
   })
+  
+  # Differential expression
+  de_var <- eventReactive(input$do_de, {
+    input$de_var
+  })
+  
+  # de_g1 <- eventReactive(input$do_de, {
+  #   input$de_g1
+  # })
+  # 
+  # de_g2 <- eventReactive(input$do_de, {
+  #   input$de_g2
+  # })
+  
   ###########################################
   ######### 1st tab App description #########
   ###########################################
@@ -275,7 +357,7 @@ server <- function(input, output, session) {
   
   output$text3 <- renderUI({
     HTML("<p>This App is designed to take in 2 RDS files, one containing the metadata of the cells and the second containing the gene expression matrix of choice.<br/>
-    These RDS objects can be obtained using the function found <a href='https://github.com/Single-Cell-Genomics-Group-CNAG-CRG/Shiny_annotation/blob/master/seurat2shiny.R'> <B>here</B></a>!<br/>
+    These RDS objects can be obtained using the function found <a href='https://github.com/Single-Cell-Genomics-Group-CNAG-CRG/shiny_annotation/blob/master/seurat2shiny.R'> <B>here</B></a>!<br/>
     <B>Before visualizing the plots</B> for the 1st time one must click the update buttons selecting <i>genes of interest</i>, <i>grouping variable</i>, <i>filtering variable</i> and <i>filtering selection</i></p>")
   })
   
@@ -340,8 +422,8 @@ server <- function(input, output, session) {
     expr_mtrx <- exprInput()
     
     # Subset by gene expression
-    mask <- expr_mtrx[gene_filt(), ] > input$expression_slider[1] &
-      expr_mtrx[gene_filt(), ] < input$expression_slider[2]
+    mask <- expr_mtrx[gene_filt(), ] >= input$expression_slider[1] &
+      expr_mtrx[gene_filt(), ] <= input$expression_slider[2]
     
     expr_mtrx <- expr_mtrx[, mask]
     metadata_df <- metadata_df[mask, ]
@@ -394,8 +476,8 @@ server <- function(input, output, session) {
     expr_mtrx <- exprInput()
     
     # Subset by gene expression
-    mask <- expr_mtrx[gene_filt(), ] > input$expression_slider[1] &
-      expr_mtrx[gene_filt(), ] < input$expression_slider[2]
+    mask <- expr_mtrx[gene_filt(), ] >= input$expression_slider[1] &
+      expr_mtrx[gene_filt(), ] <= input$expression_slider[2]
     
     expr_mtrx <- expr_mtrx[, mask]
     metadata_df <- metadata_df[mask, ]
@@ -436,6 +518,23 @@ server <- function(input, output, session) {
                                    axis = "tbrl")
     
     return(vln_arr)
+  })
+  
+  # Differential Expression Table
+  output$de_table <- renderDataTable({
+    se_obj <- Seurat::CreateSeuratObject(counts = expr_mtrx,
+                                         meta.data = metadata_df)
+    Seurat::Idents(se_obj) <- metadata_df[, de_var()]
+    markers <- Seurat::FindMarkers(object = expr_mtrx,
+                                   ident.1 = de_g1,
+                                   ident.2 = de_g1)
+    DT::datatable(markers,
+                  filter = "top",
+                  options = list(
+                    lengthMenu = c(10, 25, 50),
+                    columnDefs = list(className = 'dt-center'),
+                    pageLength = 5)
+                  )
   })
   
 }
