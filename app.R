@@ -8,9 +8,11 @@ library(plotly)
 library(RColorBrewer)
 library(profvis)
 library(scattermore)
+library(DT)
 
 # Metadata dataframe set as NULL at the beginning to avoid showing error
 if (! exists("metadata_df")) metadata_df <- NULL
+if (! exists("expr_mtrx")) expr_mtrx <- NULL
 
 ## Only run examples in interactive R sessions
 # if (interactive()) {
@@ -72,6 +74,23 @@ ui <- fluidPage(
                   max = 10,
                   value = 3,
                   step = 0.1),
+     
+     # Select gene to to filter expression
+     selectizeInput("gene_filt", "Gene to filter:",
+                    selected = NULL,
+                    choices = NULL,
+                    options = list(create = TRUE),
+                    multiple = FALSE),
+     actionButton(inputId = "apply_expr_filt",
+                  label = "Update gene slider"),
+     
+     # Slider to filter by gene expression
+     sliderInput("expression_slider",
+                 label = "Gene expression filter",
+                 min = 0, 
+                 max = 10,
+                 step = 0.5,
+                 value = c(0, 10)),
       
       # Which labels to add to interactive output
       selectizeInput("filter_var", "Filtering group:",
@@ -83,7 +102,8 @@ ui <- fluidPage(
       actionButton(inputId = "apply_filter", label = "Update variable"),
       
       # Which groups to keep
-      checkboxGroupInput("filter_grp", "Groups to include:",
+      checkboxGroupInput(inputId = "filter_grp",
+                         label = "Groups to include:",
                          choices = "",
                          selected = NULL),
       
@@ -106,11 +126,43 @@ ui <- fluidPage(
         tabPanel(title = "Feature Plots",
                  plotOutput("FeaturePlot", height = "800")),
         tabPanel(title = "Violin Plots",
-                 plotOutput("ViolinPlot", height = "800"))
+                 plotOutput("ViolinPlot", height = "800")),
+        # Adding Differential Expression Tab
+        tabPanel(title = "DE",
+                 sidebarLayout(
+                   sidebarPanel(width = 3,
+                                # Variables specifying groups
+                                selectizeInput("de_var", "DE group:",
+                                               selected = NULL,
+                                               choices = NULL,
+                                               options = list(create = TRUE),
+                                               multiple = FALSE),
+                                actionButton(inputId = "update_indents",
+                                             label = "Update groups"),
+                                
+                                # Variables specifying groups
+                                selectizeInput("de_g1", "Group 1:",
+                                               selected = NULL,
+                                               choices = NULL,
+                                               options = list(create = TRUE),
+                                               multiple = FALSE),
+                                selectizeInput("de_g2", "Group 2:",
+                                               selected = NULL,
+                                               choices = NULL,
+                                               options = list(create = TRUE),
+                                               multiple = FALSE),
+                                actionButton(inputId = "do_de",
+                                             label = "Run DE"),
+                                
+                                ),
+                   mainPanel(
+                     DTOutput("de_table"))
+                   )
+                 )
+        )
       )
     )
   )
-)
 
 ##################################################################################################################
 ##################################################################################################################
@@ -147,12 +199,19 @@ server <- function(input, output, session) {
     if( is.null( file2 ) ) { return() }
     tmp2_ds <- readRDS(file2$datapath)
     expr_mtrx <<- as.matrix(tmp2_ds)
-
+    
     # Update marker selection
     updateSelectizeInput(session,
                          inputId = "gene_ls",
                          choices = c("", rownames(expr_mtrx)),
                          selected = rownames(expr_mtrx)[1])
+    
+    # Update filter gene
+    updateSelectizeInput(session,
+                         inputId = "gene_filt",
+                         choices = rownames(expr_mtrx),
+                         selected = rownames(expr_mtrx)[1])
+    
     
     # Subset character/factor columns with <= 50 unique values
     feat_ch1 <- sapply(metadata_df, function(x) length(unique(x)) <= 50)
@@ -182,6 +241,56 @@ server <- function(input, output, session) {
     
   })
   
+  # Differential expression analysis update
+  observe({
+    
+    # Load data
+    file1 <- input$metadata
+    if (is.null(file1) ) { return() }
+    tmp1_ds <- readRDS(file1$datapath)
+    metadata_df <<- tmp1_ds
+    
+    # Exrtact metadata features + groups
+    # Subset colnames
+    mask <- sapply(metadata_df, function(x) length(unique(x)) <= 50)
+    de_vr <- names(mask)[mask]
+    
+    # Update Filtering variable selection
+    updateSelectizeInput(session,
+                         inputId = "de_var",
+                         choices = c("", 
+                                     de_vr),
+                         selected = de_vr[1])
+  })
+  
+  observe({
+    vr_groups <- unique(metadata_df[, de_var()])
+    # Update Filtering variable selection
+    updateSelectizeInput(session,
+                         inputId = "de_g1",
+                         choices = c("",
+                                     vr_groups),
+                         selected = vr_groups[1])
+    
+    # Update Filtering variable selection
+    updateSelectizeInput(session,
+                         inputId = "de_g2",
+                         choices = c("", 
+                                     vr_groups),
+                         selected = vr_groups[2])
+  })
+  
+  # Independent observe event for Gene expression slider event input so it doesn't update all the rest  
+  observe({
+    # Here we want to update the slider to filter by gene expression
+    updateSliderInput(session, 
+                      inputId = "expression_slider",
+                      value = 0,
+                      min = 0,
+                      max = max(expr_mtrx[gene_filt(), ]),
+                      step = 0.1)
+  })
+  
   # Independent observe event for checkbox input so it doesn't update all the rest
   observe({
     # Update Filtering groups
@@ -207,6 +316,10 @@ server <- function(input, output, session) {
     input$filter_var
   })
   
+  gene_filt <- eventReactive(input$apply_expr_filt, {
+    input$gene_filt
+  })
+  
   apply_grp <- eventReactive(input$apply_grp, {
     input$filter_grp
   })
@@ -221,6 +334,20 @@ server <- function(input, output, session) {
     keep_id <- metadata_df[metadata_df[, filter_var()] %in% apply_grp(), "barcode"]
     expr_mtrx[, keep_id]
   })
+  
+  # Differential expression
+  de_var <- eventReactive(input$update_indents, {
+    input$de_var
+  })
+  
+  de_g1 <- eventReactive(input$do_de, {
+    input$de_g1
+  })
+
+  de_g2 <- eventReactive(input$do_de, {
+    input$de_g2
+  })
+  
   ###########################################
   ######### 1st tab App description #########
   ###########################################
@@ -234,7 +361,7 @@ server <- function(input, output, session) {
   
   output$text3 <- renderUI({
     HTML("<p>This App is designed to take in 2 RDS files, one containing the metadata of the cells and the second containing the gene expression matrix of choice.<br/>
-    These RDS objects can be obtained using the function found <a href='https://github.com/Single-Cell-Genomics-Group-CNAG-CRG/Shiny_annotation/blob/master/seurat2shiny.R'> <B>here</B></a>!<br/>
+    These RDS objects can be obtained using the function found <a href='https://github.com/Single-Cell-Genomics-Group-CNAG-CRG/shiny_annotation/blob/master/seurat2shiny.R'> <B>here</B></a>!<br/>
     <B>Before visualizing the plots</B> for the 1st time one must click the update buttons selecting <i>genes of interest</i>, <i>grouping variable</i>, <i>filtering variable</i> and <i>filtering selection</i></p>")
   })
   
@@ -297,6 +424,13 @@ server <- function(input, output, session) {
     # Read data from reactive observed slots
     metadata_df <- dfInput()
     expr_mtrx <- exprInput()
+    
+    # Subset by gene expression
+    mask <- expr_mtrx[gene_filt(), ] >= input$expression_slider[1] &
+      expr_mtrx[gene_filt(), ] <= input$expression_slider[2]
+    
+    expr_mtrx <- expr_mtrx[, mask]
+    metadata_df <- metadata_df[mask, ]
 
     ## Plot all genes
     plt_ls <- lapply(gene_list(), function(gene) {
@@ -312,7 +446,8 @@ server <- function(input, output, session) {
                                         pixels = c(1000,1000),
                                         interpolate = TRUE) +
           ggplot2::scale_color_gradient(low = "lightgrey",
-                                        high = "blue") +
+                                        high = "blue",
+                                        limits = c(0, max(expr_mtrx[gene, ]))) +
           ggplot2::theme_classic() +
           ggplot2::labs(
             title = gene,
@@ -344,6 +479,14 @@ server <- function(input, output, session) {
     metadata_df <- dfInput()
     expr_mtrx <- exprInput()
     
+    # Subset by gene expression
+    mask <- expr_mtrx[gene_filt(), ] >= input$expression_slider[1] &
+      expr_mtrx[gene_filt(), ] <= input$expression_slider[2]
+    
+    expr_mtrx <- expr_mtrx[, mask]
+    metadata_df <- metadata_df[mask, ]
+    
+    
     nb.cols <- length(unique(metadata_df[, groupby_var()]))
     set2_expand <- colorRampPalette(RColorBrewer::brewer.pal(8, "Set2"))(nb.cols)
     
@@ -356,6 +499,7 @@ server <- function(input, output, session) {
                                  color = metadata_df[, groupby_var()],
                                  fill = metadata_df[, groupby_var()]),
                              alpha = 0.6) +
+        ggplot2::ylim(c(0, max(expr_mtrx[gene, ]))) +
         ggplot2::scale_color_manual(values = set2_expand) +
         ggplot2::scale_fill_manual(values = set2_expand) +
         ggplot2::theme_classic() +
@@ -379,6 +523,34 @@ server <- function(input, output, session) {
                                    axis = "tbrl")
     
     return(vln_arr)
+  })
+  
+  # Differential Expression Table
+  output$de_table <- renderDT({
+    # Some old verision metadatas don't have column names but they are save in the "barcode" column
+    # I've updated seurat2shiny so now the metadata has rownames. In time this If can disappear.
+    
+    # If all the rownames in metadata are in the columns of expression matrix go ahead,
+    # if not and barcode is a column in metadata assign it to rownames
+    if(sum(rownames(metadata_df) %in% colnames(expr_mtrx)) != nrow(metadata_df) & 
+       "barcode" %in% colnames(metadata_df)) {
+      rownames(metadata_df) <- metadata_df$barcode
+    }
+    
+    se_obj <- Seurat::CreateSeuratObject(counts = expr_mtrx,
+                                         meta.data = metadata_df)
+    
+    Seurat::Idents(se_obj) <- metadata_df[, de_var()]
+    
+    markers <- Seurat::FindMarkers(object = se_obj,
+                                   ident.1 = de_g1(),
+                                   ident.2 = de_g2())
+    DT::datatable(markers,
+                  filter = "top",
+                  options = list(
+                    lengthMenu = c(10, 25, 50),
+                    pageLength = 5)
+                  )
   })
   
 }
