@@ -1,7 +1,9 @@
 library(BiocManager)
 options(repos = BiocManager::repositories())
+library(biocViews)
 library(shiny)
 library(shinyjs)
+library(sctransform)
 library(Seurat)
 library(ggplot2)
 library(plotly)
@@ -264,7 +266,7 @@ server <- function(input, output, session) {
   })
   
   observe({
-    vr_groups <- unique(metadata_df[, de_var()])
+    vr_groups <- unique(as.character(metadata_df[, de_var()]))
     # Update Filtering variable selection
     updateSelectizeInput(session,
                          inputId = "de_g1",
@@ -361,7 +363,7 @@ server <- function(input, output, session) {
   
   output$text3 <- renderUI({
     HTML("<p>This App is designed to take in 2 RDS files, one containing the metadata of the cells and the second containing the gene expression matrix of choice.<br/>
-    These RDS objects can be obtained using the function found <a href='https://github.com/Single-Cell-Genomics-Group-CNAG-CRG/shiny_annotation/blob/master/seurat2shiny.R'> <B>here</B></a>!<br/>
+    These RDS objects can be obtained using the function found <a href='https://github.com/Single-Cell-Genomics-Group-CNAG-CRG/shiny-annotation/blob/master/seurat2shiny.R'> <B>here</B></a>!<br/>
     <B>Before visualizing the plots</B> for the 1st time one must click the update buttons selecting <i>genes of interest</i>, <i>grouping variable</i>, <i>filtering variable</i> and <i>filtering selection</i></p>")
   })
   
