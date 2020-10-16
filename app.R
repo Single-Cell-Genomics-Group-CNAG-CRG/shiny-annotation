@@ -427,7 +427,7 @@ server <- function(input, output, session) {
     
     # Subset by gene expression
     mask <- expr_mtrx[gene_filt(), ] >= input$expression_slider[1] &
-      expr_mtrx[gene_filt(), ] <= input$expression_slider[2]
+            expr_mtrx[gene_filt(), ] <= input$expression_slider[2]
     
     expr_mtrx <- expr_mtrx[, mask]
     metadata_df <- metadata_df[mask, ]
@@ -480,8 +480,9 @@ server <- function(input, output, session) {
     expr_mtrx <- exprInput()
     
     # Subset by gene expression
-    mask <- expr_mtrx[gene_filt(), ] >= input$expression_slider[1] &
-      expr_mtrx[gene_filt(), ] <= input$expression_slider[2]
+    mask1 <- expr_mtrx[gene_filt(), ] >= input$expression_slider[1]
+    mask2 <- expr_mtrx[gene_filt(), ] <= input$expression_slider[2]
+    mask <- mask1 & mask2
     
     expr_mtrx <- expr_mtrx[, mask]
     metadata_df <- metadata_df[mask, ]
