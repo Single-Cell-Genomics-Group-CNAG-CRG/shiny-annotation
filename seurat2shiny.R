@@ -26,9 +26,11 @@
 
 seurat2shiny = function(
     object                         ,
+    tech      = "sc"               ,
     assay     = object@active.assay,
     reduction = "umap"             ,
     slot      = "data"             ,
+    image     = NULL               ,
     asfactors = NULL               ,
     save      = TRUE               ,
     path      = "."                  # path = getwd()
@@ -42,15 +44,35 @@ seurat2shiny = function(
     if ( ! assay %in% Seurat::Assays(object) )
         stop("'assay' not in the Seurat object's available assays.");
 
-    if ( ! reduction %in% names(object@reductions) )
+    if ( tech == "sc" & ! (reduction %in% names(object@reductions)) )
         stop("'reduction' not in the Seurat object's available reductions.");
 
     if ( ! slot %in% c("counts", "data", "scale.data") )
         stop("'slot' not in the Seurat object's available slots.");
-
-    # Extract 2D coordinates.
-    embeds <- as.data.frame(object@reductions[[reduction]]@cell.embeddings);
-    names(embeds) <- c("coord_x", "coord_y");
+    
+    if ( ! tech %in% c("sc", "sp") )
+        stop("tech must be sc or sp.");
+    
+    
+    # Check Which technology it is processing
+    if (tech == "sc") {
+        # Extract 2D coordinates.
+        embeds <- as.data.frame(object@reductions[[reduction]]@cell.embeddings);
+        names(embeds) <- c("coord_x", "coord_y");
+    } else if (tech == "sp") {
+        # If the iimage is null select the first one
+        if (is.null(image)) {
+            image <- names(object@images)[1]
+            warning(sprintf("image is not set, we will use %s", image))
+        } 
+        
+        embeds <- data.frame(tmp_se@images[["c28w2r_7jne4i"]]@coordinates[, c("imagerow", "imagecol")])
+        colnames(embeds) <- c("coord_y", "coord_x");
+        
+        # Inverse coord_y
+        embeds$coord_y <- - embeds$coord_y
+    }
+    
 
     # Join metadata with coordinates.
     metadata <- object@meta.data;
