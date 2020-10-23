@@ -7,9 +7,11 @@
 #' ShinyApp: https://github.com/Single-Cell-Genomics-Group-CNAG-CRG/shiny-annotation/blob/main/seurat2shiny.R
 #'
 #' @param object Object of class Seurat. Mandatory.
+#' @param tech Character string. Specify the technology 
 #' @param assay Character string. Assay within the Seurat object from which to extract the expression matrix. Default: active assay.
-#' @param reduction Character string. Dimensionality reduction from which to extract the 2D coordinates. Default: umap.
 #' @param slot Character string. Slot containing the expression matrix. Default: data.
+#' @param reduction Character string. Dimensionality reduction from which to extract the 2D coordinates. Default: umap.
+#' @param image Character string or NULL. When tech is sp, name of the image from which we want to extract the coordinates as found in names(object/@images), by default NULL.
 #' @param asfactors Character vector. Metadata columns to be converted to factors. Default: NULL.
 #' @param save Logical value. Save metadata and expression matrix objects as RDS files. Default: TRUE.
 #' @param path Character string. Path to save output files if 'save = TRUE'. Default: working directory.
@@ -26,9 +28,11 @@
 
 seurat2shiny = function(
     object                         ,
+    tech      = "sc"               ,
     assay     = object@active.assay,
-    reduction = "umap"             ,
     slot      = "data"             ,
+    reduction = "umap"             ,
+    image     = NULL               ,
     asfactors = NULL               ,
     save      = TRUE               ,
     path      = "."                  # path = getwd()
@@ -42,15 +46,35 @@ seurat2shiny = function(
     if ( ! assay %in% Seurat::Assays(object) )
         stop("'assay' not in the Seurat object's available assays.");
 
-    if ( ! reduction %in% names(object@reductions) )
+    if ( tech == "sc" & ! (reduction %in% names(object@reductions)) )
         stop("'reduction' not in the Seurat object's available reductions.");
 
     if ( ! slot %in% c("counts", "data", "scale.data") )
         stop("'slot' not in the Seurat object's available slots.");
-
-    # Extract 2D coordinates.
-    embeds <- as.data.frame(object@reductions[[reduction]]@cell.embeddings);
-    names(embeds) <- c("coord_x", "coord_y");
+    
+    if ( ! tech %in% c("sc", "sp") )
+        stop("tech must be sc or sp.");
+    
+    
+    # Check Which technology it is processing
+    if (tech == "sc") {
+        # Extract 2D coordinates.
+        embeds <- as.data.frame(object@reductions[[reduction]]@cell.embeddings);
+        names(embeds) <- c("coord_x", "coord_y");
+    } else if (tech == "sp") {
+        # If the iimage is null select the first one
+        if (is.null(image)) {
+            image <- names(object@images)[1]
+            warning(sprintf("image is not set, we will use %s", image))
+        } 
+        
+        embeds <- data.frame(object@images[[image]]@coordinates[, c("imagerow", "imagecol")])
+        colnames(embeds) <- c("coord_y", "coord_x");
+        
+        # Inverse coord_y
+        embeds$coord_y <- - embeds$coord_y
+    }
+    
 
     # Join metadata with coordinates.
     metadata <- object@meta.data;

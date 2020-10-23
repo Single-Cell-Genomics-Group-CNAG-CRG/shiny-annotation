@@ -1,6 +1,5 @@
 library(BiocManager)
 options(repos = BiocManager::repositories())
-library(biocViews)
 library(shiny)
 library(shinyjs)
 library(sctransform)
@@ -92,7 +91,7 @@ ui <- fluidPage(
                  min = 0, 
                  max = 10,
                  step = 0.5,
-                 value = c(0, 10)),
+                 value = c(-5, 10)),
       
       # Which labels to add to interactive output
       selectizeInput("filter_var", "Filtering group:",
@@ -287,8 +286,8 @@ server <- function(input, output, session) {
     # Here we want to update the slider to filter by gene expression
     updateSliderInput(session, 
                       inputId = "expression_slider",
-                      value = 0,
-                      min = 0,
+                      value = min(expr_mtrx[gene_filt(), ]),
+                      min = min(expr_mtrx[gene_filt(), ]),
                       max = max(expr_mtrx[gene_filt(), ]),
                       step = 0.1)
   })
@@ -428,8 +427,9 @@ server <- function(input, output, session) {
     expr_mtrx <- exprInput()
     
     # Subset by gene expression
-    mask <- expr_mtrx[gene_filt(), ] >= input$expression_slider[1] &
-            expr_mtrx[gene_filt(), ] <= input$expression_slider[2]
+    ## Added -0.1 and +0.1 since I think the slider input rounds the number and the extreme numbers might be ignored
+    mask <- expr_mtrx[gene_filt(), ] >= input$expression_slider[1] - 0.1 &
+            expr_mtrx[gene_filt(), ] <= input$expression_slider[2] + 0.1
     
     expr_mtrx <- expr_mtrx[, mask]
     metadata_df <- metadata_df[mask, ]
@@ -449,7 +449,8 @@ server <- function(input, output, session) {
                                         interpolate = TRUE) +
           ggplot2::scale_color_gradient(low = "lightgrey",
                                         high = "blue",
-                                        limits = c(0, max(expr_mtrx[gene, ]))) +
+                                        limits = c(min(expr_mtrx[gene, ]),
+                                                   max(expr_mtrx[gene, ]))) +
           ggplot2::theme_classic() +
           ggplot2::labs(
             title = gene,
@@ -482,8 +483,9 @@ server <- function(input, output, session) {
     expr_mtrx <- exprInput()
     
     # Subset by gene expression
-    mask1 <- expr_mtrx[gene_filt(), ] >= input$expression_slider[1]
-    mask2 <- expr_mtrx[gene_filt(), ] <= input$expression_slider[2]
+    ## Added -0.1 and +0.1 since I think the slider input rounds the number and the extreme numbers might be ignored
+    mask1 <- expr_mtrx[gene_filt(), ] >= input$expression_slider[1] - 0.1
+    mask2 <- expr_mtrx[gene_filt(), ] <= input$expression_slider[2] + 0.1
     mask <- mask1 & mask2
     
     expr_mtrx <- expr_mtrx[, mask]
@@ -502,7 +504,8 @@ server <- function(input, output, session) {
                                  color = metadata_df[, groupby_var()],
                                  fill = metadata_df[, groupby_var()]),
                              alpha = 0.6) +
-        ggplot2::ylim(c(0, max(expr_mtrx[gene, ]))) +
+        ggplot2::ylim(c(min(expr_mtrx[gene, ]),
+                        max(expr_mtrx[gene, ]))) +
         ggplot2::scale_color_manual(values = set2_expand) +
         ggplot2::scale_fill_manual(values = set2_expand) +
         ggplot2::theme_classic() +
@@ -513,8 +516,9 @@ server <- function(input, output, session) {
           color = groupby_var(),
           fill  = groupby_var()) +
         ggplot2::theme(
-          plot.title = ggplot2::element_text(hjust = 0.5,
-                                    face = "bold")
+          plot.title = ggplot2::element_text(
+            hjust = 0.5,
+            face = "bold")
         )
       
       return(vln_plt)
