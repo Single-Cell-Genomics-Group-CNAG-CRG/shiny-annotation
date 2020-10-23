@@ -427,6 +427,7 @@ server <- function(input, output, session) {
     expr_mtrx <- exprInput()
     
     # Subset by gene expression
+    ## Added -0.1 and +0.1 since I think the slider input rounds the number and the extreme numbers might be ignored
     mask <- expr_mtrx[gene_filt(), ] >= input$expression_slider[1] - 0.1 &
             expr_mtrx[gene_filt(), ] <= input$expression_slider[2] + 0.1
     
@@ -482,6 +483,7 @@ server <- function(input, output, session) {
     expr_mtrx <- exprInput()
     
     # Subset by gene expression
+    ## Added -0.1 and +0.1 since I think the slider input rounds the number and the extreme numbers might be ignored
     mask1 <- expr_mtrx[gene_filt(), ] >= input$expression_slider[1] - 0.1
     mask2 <- expr_mtrx[gene_filt(), ] <= input$expression_slider[2] + 0.1
     mask <- mask1 & mask2
