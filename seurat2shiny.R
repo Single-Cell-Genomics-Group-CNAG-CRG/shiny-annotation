@@ -7,9 +7,11 @@
 #' ShinyApp: https://github.com/Single-Cell-Genomics-Group-CNAG-CRG/shiny-annotation/blob/main/seurat2shiny.R
 #'
 #' @param object Object of class Seurat. Mandatory.
+#' @param tech Character string. Specify the technology 
 #' @param assay Character string. Assay within the Seurat object from which to extract the expression matrix. Default: active assay.
-#' @param reduction Character string. Dimensionality reduction from which to extract the 2D coordinates. Default: umap.
 #' @param slot Character string. Slot containing the expression matrix. Default: data.
+#' @param reduction Character string. Dimensionality reduction from which to extract the 2D coordinates. Default: umap.
+#' @param image Character string or NULL. When tech is sp, name of the image from which we want to extract the coordinates as found in names(object/@images), by default NULL.
 #' @param asfactors Character vector. Metadata columns to be converted to factors. Default: NULL.
 #' @param save Logical value. Save metadata and expression matrix objects as RDS files. Default: TRUE.
 #' @param path Character string. Path to save output files if 'save = TRUE'. Default: working directory.
@@ -28,8 +30,8 @@ seurat2shiny = function(
     object                         ,
     tech      = "sc"               ,
     assay     = object@active.assay,
-    reduction = "umap"             ,
     slot      = "data"             ,
+    reduction = "umap"             ,
     image     = NULL               ,
     asfactors = NULL               ,
     save      = TRUE               ,
@@ -66,7 +68,7 @@ seurat2shiny = function(
             warning(sprintf("image is not set, we will use %s", image))
         } 
         
-        embeds <- data.frame(object@images[["c28w2r_7jne4i"]]@coordinates[, c("imagerow", "imagecol")])
+        embeds <- data.frame(object@images[[image]]@coordinates[, c("imagerow", "imagecol")])
         colnames(embeds) <- c("coord_y", "coord_x");
         
         # Inverse coord_y
