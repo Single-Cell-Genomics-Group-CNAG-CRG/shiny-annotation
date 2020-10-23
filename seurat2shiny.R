@@ -66,7 +66,7 @@ seurat2shiny = function(
             warning(sprintf("image is not set, we will use %s", image))
         } 
         
-        embeds <- data.frame(tmp_se@images[["c28w2r_7jne4i"]]@coordinates[, c("imagerow", "imagecol")])
+        embeds <- data.frame(object@images[["c28w2r_7jne4i"]]@coordinates[, c("imagerow", "imagecol")])
         colnames(embeds) <- c("coord_y", "coord_x");
         
         # Inverse coord_y
