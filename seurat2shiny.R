@@ -62,7 +62,7 @@ seurat2shiny = function(
         embeds <- as.data.frame(object@reductions[[reduction]]@cell.embeddings);
         names(embeds) <- c("coord_x", "coord_y");
     } else if (tech == "sp") {
-        # If the iimage is null select the first one
+        # If the image is null select the first one
         if (is.null(image)) {
             image <- names(object@images)[1]
             warning(sprintf("image is not set, we will use %s", image))
