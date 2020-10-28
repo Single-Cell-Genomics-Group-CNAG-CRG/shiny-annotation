@@ -28,7 +28,7 @@
 
 seurat2shiny = function(
     object                         ,
-    tech      = "sc"               ,
+    tech      = c("sc", "sp")      ,
     assay     = object@active.assay,
     slot      = "data"             ,
     reduction = "umap"             ,
