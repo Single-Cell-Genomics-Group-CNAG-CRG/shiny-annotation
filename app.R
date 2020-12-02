@@ -72,7 +72,7 @@ ui <- fluidPage(
       # Slider to determine point size of UMAP plots
       sliderInput("size", "Dot size:",
                   min = 0,
-                  max = 10,
+                  max = 20,
                   value = 3,
                   step = 0.1),
      
@@ -389,10 +389,11 @@ server <- function(input, output, session) {
                                         y,
                                         color = metadata_df[, groupby_var()]),
                                     pointsize = as.numeric(input$size),
-                                    alpha = 0.7,
+                                    alpha = 1,
                                     pixels = c(2000, 2000),
                                     interpolate = TRUE) +
       ggplot2::theme_classic() +
+      ggplot2::guides(color = ggplot2::guide_legend(override.aes = list(size = 5))) +
       ggplot2::labs(
         title = "",
         x = "DIM-1",
@@ -551,7 +552,8 @@ server <- function(input, output, session) {
     
     markers <- Seurat::FindMarkers(object = se_obj,
                                    ident.1 = de_g1(),
-                                   ident.2 = de_g2())
+                                   ident.2 = de_g2()) %>%
+      tibble::rownames_to_column("gene")
     DT::datatable(markers,
                   filter = "top",
                   options = list(
