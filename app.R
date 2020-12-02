@@ -10,6 +10,7 @@ library(RColorBrewer)
 library(profvis)
 library(scattermore)
 library(DT)
+library(glue)
 
 # Metadata dataframe set as NULL at the beginning to avoid showing error
 if (! exists("metadata_df")) metadata_df <- NULL
@@ -154,7 +155,8 @@ ui <- fluidPage(
                                                multiple = FALSE),
                                 actionButton(inputId = "do_de",
                                              label = "Run DE"),
-                                
+                                # Button
+                                downloadButton("downloadData", "Download")
                                 ),
                    mainPanel(
                      DTOutput("de_table"))
@@ -349,6 +351,28 @@ server <- function(input, output, session) {
     input$de_g2
   })
   
+  de_table <- reactive({
+    # Some old verision metadatas don't have column names but they are save in the "barcode" column
+    # I've updated seurat2shiny so now the metadata has rownames. In time this If can disappear.
+    
+    # If all the rownames in metadata are in the columns of expression matrix go ahead,
+    # if not and barcode is a column in metadata assign it to rownames
+    if(sum(rownames(metadata_df) %in% colnames(expr_mtrx)) != nrow(metadata_df) &
+       "barcode" %in% colnames(metadata_df)) {
+      rownames(metadata_df) <- metadata_df$barcode
+    }
+    
+    se_obj <- Seurat::CreateSeuratObject(counts = expr_mtrx,
+                                         meta.data = metadata_df)
+    
+    Seurat::Idents(se_obj) <- metadata_df[, de_var()]
+    
+    markers <- Seurat::FindMarkers(object = se_obj,
+                                   ident.1 = de_g1(),
+                                   ident.2 = de_g2())
+    markers <- markers %>% tibble::rownames_to_column("gene")
+  })
+  
   ###########################################
   ######### 1st tab App description #########
   ###########################################
@@ -539,26 +563,36 @@ server <- function(input, output, session) {
     
     # If all the rownames in metadata are in the columns of expression matrix go ahead,
     # if not and barcode is a column in metadata assign it to rownames
-    if(sum(rownames(metadata_df) %in% colnames(expr_mtrx)) != nrow(metadata_df) & 
-       "barcode" %in% colnames(metadata_df)) {
-      rownames(metadata_df) <- metadata_df$barcode
-    }
-    
-    se_obj <- Seurat::CreateSeuratObject(counts = expr_mtrx,
-                                         meta.data = metadata_df)
-    
-    Seurat::Idents(se_obj) <- metadata_df[, de_var()]
-    
-    markers <- Seurat::FindMarkers(object = se_obj,
-                                   ident.1 = de_g1(),
-                                   ident.2 = de_g2())
-    DT::datatable(markers,
+    # if(sum(rownames(metadata_df) %in% colnames(expr_mtrx)) != nrow(metadata_df) &
+    #    "barcode" %in% colnames(metadata_df)) {
+    #   rownames(metadata_df) <- metadata_df$barcode
+    # }
+    # 
+    # se_obj <- Seurat::CreateSeuratObject(counts = expr_mtrx,
+    #                                      meta.data = metadata_df)
+    # 
+    # Seurat::Idents(se_obj) <- metadata_df[, de_var()]
+    # 
+    # markers <- Seurat::FindMarkers(object = se_obj,
+    #                                ident.1 = de_g1(),
+    #                                ident.2 = de_g2())
+    DT::datatable(de_table(),
                   filter = "top",
                   options = list(
                     lengthMenu = c(10, 25, 50),
                     pageLength = 5)
                   )
   })
+  
+  # Download csv of DE table generated
+  output$downloadData <- downloadHandler(
+    filename = "DE_shiny.csv",
+    content = function(file) {
+      write.csv(de_table(),
+                file = file,
+                row.names = FALSE)
+    }
+  )
   
 }
 
