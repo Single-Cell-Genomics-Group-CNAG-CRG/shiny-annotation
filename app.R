@@ -556,7 +556,7 @@ server <- function(input, output, session) {
     return(vln_arr)
   })
   
-  # Differential Expression Table
+  # Differential Expression Table, table is generated in a reactive event so it can be picked up by de_table and the download button
   output$de_table <- renderDT({
     # Some old verision metadatas don't have column names but they are save in the "barcode" column
     # I've updated seurat2shiny so now the metadata has rownames. In time this If can disappear.
