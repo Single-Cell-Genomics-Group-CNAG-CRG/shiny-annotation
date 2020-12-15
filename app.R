@@ -11,6 +11,7 @@ library(profvis)
 library(scattermore)
 library(DT)
 library(glue)
+library(viridis)
 
 # Metadata dataframe set as NULL at the beginning to avoid showing error
 if (! exists("metadata_df")) metadata_df <- NULL
@@ -123,12 +124,27 @@ ui <- fluidPage(
                  textOutput("text2"),
                  htmlOutput("text3"),
                  htmlOutput("text4")),
+        
         tabPanel(title = "UMAP Plot",
                  plotOutput("dimPlot", height = "800")),
+        
         tabPanel(title = "Feature Plots",
-                 plotOutput("FeaturePlot", height = "800")),
+                 radioButtons(inputId = "feat_col",
+                                    label = "Color Palette:",
+                                    choices = c("GreyBlue",
+                                                "viridis",
+                                                "heat",
+                                                "magma"),
+                                    selected = "GreyBlue",
+                                    inline = TRUE
+                                    # width = "100%"
+                              ),
+                 plotOutput("FeaturePlot", height = "800")
+                 ),
+        
         tabPanel(title = "Violin Plots",
                  plotOutput("ViolinPlot", height = "800")),
+        
         # Adding Differential Expression Tab
         tabPanel(title = "DE",
                  sidebarLayout(
@@ -472,10 +488,10 @@ server <- function(input, output, session) {
                                         alpha = 0.7,
                                         pixels = c(1000,1000),
                                         interpolate = TRUE) +
-          ggplot2::scale_color_gradient(low = "lightgrey",
-                                        high = "blue",
-                                        limits = c(min(expr_mtrx[gene, ]),
-                                                   max(expr_mtrx[gene, ]))) +
+          # ggplot2::scale_color_gradient(low = "lightgrey",
+          #                               high = "blue",
+          #                               limits = c(min(expr_mtrx[gene, ]),
+          #                                          max(expr_mtrx[gene, ]))) +
           ggplot2::theme_classic() +
           ggplot2::labs(
             title = gene,
@@ -485,6 +501,26 @@ server <- function(input, output, session) {
           ggplot2::theme(
             plot.title = element_text(hjust = 0.5, face = "bold")
           )
+        
+        # Set color palette
+        if (input$feat_col == "GreyBlue") {
+          feat_plt <- feat_plt +
+            ggplot2::scale_color_gradient(low = "lightgrey",
+                                          high = "blue",
+                                          limits = c(min(expr_mtrx[gene, ]),
+                                                     max(expr_mtrx[gene, ])))
+        } else if (input$feat_col %in% c("viridis", "magma")) {
+          feat_plt <- feat_plt +
+            ggplot2::scale_colour_viridis_c(option = input$feat_col,
+                                            limits = c(min(expr_mtrx[gene, ]),
+                                                       max(expr_mtrx[gene, ])))
+        } else if (input$feat_col == "heat") {
+          feat_plt <- feat_plt +
+            ggplot2::scale_color_gradient(low = "#FFFF80FF",
+                                          high = "#FF0000FF",
+                                          limits = c(min(expr_mtrx[gene, ]),
+                                                     max(expr_mtrx[gene, ])))
+        }
         
       } else {
         warning(sprintf("Gene %s not found in the expression matrix.", gene))
