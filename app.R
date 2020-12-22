@@ -729,6 +729,7 @@ server <- function(input, output, session) {
     # Read data from reactive observed slots
     metadata_df <- dfInput()
     metadata_df <- metadata_df %>%
+      # Round and make as character so we can then join with the d dataframe representing the coordinates in the shiny app.
       dplyr::mutate(
         coord_x = as.character(round(coord_x, 6)),
         coord_y = as.character(round(coord_y, 6))
@@ -749,7 +750,7 @@ server <- function(input, output, session) {
                                 "x" = "coord_x")) %>%
         dplyr::select("pointNumber", "x", "y", "barcode")
 
-      # Return datatable
+      # Return datatable with the csv option to save the table directly
       DT::datatable(data = d,
                     extensions = "Buttons",
                     options = list(
