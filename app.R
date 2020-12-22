@@ -177,7 +177,26 @@ ui <- fluidPage(
                    mainPanel(
                      DTOutput("de_table"))
                    )
+                 ),
+        # Adding Differential Expression Tab
+        tabPanel(title = "Cell Selection",
+                 sidebarLayout(
+                   sidebarPanel(width = 3,
+                                # Variables specifying groups
+                                selectizeInput("sel_gene", "Gene expression:",
+                                               selected = NULL,
+                                               choices = NULL,
+                                               options = list(create = TRUE),
+                                               multiple = FALSE),
+                                actionButton(inputId = "update_gene_sel",
+                                             label = "Update gene"),
+                   ),
+                   mainPanel(
+                     plotlyOutput("sel_plot"),
+                     DTOutput("barcode_table")
+                     )
                  )
+        )
         )
       )
     )
@@ -258,6 +277,11 @@ server <- function(input, output, session) {
                                      feat_ch),
                          selected = feat_ch[1])
     
+    # Update gene_sel selection
+    updateSelectizeInput(session,
+                         inputId = "sel_gene",
+                         choices = c("", rownames(expr_mtrx)),
+                         selected = rownames(expr_mtrx)[1])
   })
   
   # Differential expression analysis update
@@ -387,6 +411,10 @@ server <- function(input, output, session) {
                                    ident.1 = de_g1(),
                                    ident.2 = de_g2())
     markers <- markers %>% tibble::rownames_to_column("gene")
+  })
+  
+  sel_gene <- eventReactive(input$update_gene_sel, {
+    input$sel_gene
   })
   
   ###########################################
@@ -628,9 +656,109 @@ server <- function(input, output, session) {
       write.csv(de_table(),
                 file = file,
                 row.names = FALSE)
-    }
-  )
+    })
   
+  # Lasso selection plot
+  output$sel_plot <- renderPlotly({
+    
+    # Read data from reactive observed slots
+    metadata_df <- dfInput()
+    expr_mtrx <- exprInput()
+    
+    p <- ggplot2::ggplot(data = metadata_df) +
+      ggplot2::geom_point(ggplot2::aes(x = coord_x,
+                                       y = coord_y,
+                                       color = expr_mtrx[sel_gene(), ],
+                                       text = barcode),
+                          size = as.numeric(input$size)) +
+      ggplot2::theme_classic() +
+      ggplot2::labs(
+        title = glue::glue("Gene: {sel_gene()}"),
+        x = "DIM-1",
+        y = "DIM-2",
+        color = "Expression") +
+      ggplot2::theme(
+        plot.title = ggplot2::element_text(
+          hjust = 0.5,
+          face = "bold")) +
+      ggplot2::scale_color_gradient(low = "lightgrey",
+                                    high = "blue",
+                                    limits = c(min(expr_mtrx[sel_gene(), ]),
+                                               max(expr_mtrx[sel_gene(), ])))
+
+    
+    # p <- ggplot(metadata_df,
+    #             aes(x = imagecol,
+    #                 y = -imagerow,
+    #                 color = nCount_Spatial,
+    #                 text = barcode),
+    #             size = 3) +
+    #   geom_point() +
+    
+    ggplotly(p, tooltip = "text") %>%
+      layout(dragmode = "lasso")
+  })
+  
+  # output$barcode_table <- renderDT({
+  #   metadata_df <- dfInput()
+  # 
+  #   # Return datatable
+  #   # DT::datatable(data = metadata_df,
+  #   #               extensions = "Buttons",
+  #   #               options = list(
+  #   #                 dom = "Bfrtip",
+  #   #                 buttons = list("csv"))
+  #   #               )
+  # 
+  #   d <- event_data(event = "plotly_selected")
+  #   d <- d %>% 
+  #     dplyr::mutate(
+  #           x = round(x, 6),
+  #           y = round(y, 6)
+  #         )
+  #   DT::datatable(data = d,
+  #                 extensions = "Buttons",
+  #                 options = list(
+  #                   dom = "Bfrtip",
+  #                   buttons = list("csv"))
+  #                 )
+  # })
+  
+  # Lasso selection table
+  output$barcode_table <- renderDT({
+    # Read data from reactive observed slots
+    metadata_df <- dfInput()
+    metadata_df <- metadata_df %>%
+      dplyr::mutate(
+        coord_x = as.character(round(coord_x, 6)),
+        coord_y = as.character(round(coord_y, 6))
+      )
+      
+
+    d <- event_data(event = "plotly_selected")
+    if (!is.null(d)) {
+      d <- d %>%
+        # we need to round the numbers to 6 since those are the coord that the metadata gives, shiny app returns up tp 14 decimals so the left join doesn't work
+        dplyr::mutate(
+          x = as.character(round(x, 6)),
+          y = as.character(round(y, 6))
+        ) %>%
+        # dplyr::mutate(y = -y) %>%
+        dplyr::left_join(metadata_df,
+                         by = c("y" = "coord_y",
+                                "x" = "coord_x")) %>%
+        dplyr::select("pointNumber", "x", "y", "barcode")
+
+      # Return datatable
+      DT::datatable(data = d,
+                    extensions = "Buttons",
+                    options = list(
+                      dom = "Bfrtip",
+                      buttons = list("csv")
+                    )
+      )
+    }
+  })
 }
 
 shinyApp(ui, server)
