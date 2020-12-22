@@ -685,44 +685,10 @@ server <- function(input, output, session) {
                                     high = "blue",
                                     limits = c(min(expr_mtrx[sel_gene(), ]),
                                                max(expr_mtrx[sel_gene(), ])))
-
-    
-    # p <- ggplot(metadata_df,
-    #             aes(x = imagecol,
-    #                 y = -imagerow,
-    #                 color = nCount_Spatial,
-    #                 text = barcode),
-    #             size = 3) +
-    #   geom_point() +
     
     ggplotly(p, tooltip = "text") %>%
       layout(dragmode = "lasso")
   })
-  
-  # output$barcode_table <- renderDT({
-  #   metadata_df <- dfInput()
-  # 
-  #   # Return datatable
-  #   # DT::datatable(data = metadata_df,
-  #   #               extensions = "Buttons",
-  #   #               options = list(
-  #   #                 dom = "Bfrtip",
-  #   #                 buttons = list("csv"))
-  #   #               )
-  # 
-  #   d <- event_data(event = "plotly_selected")
-  #   d <- d %>% 
-  #     dplyr::mutate(
-  #           x = round(x, 6),
-  #           y = round(y, 6)
-  #         )
-  #   DT::datatable(data = d,
-  #                 extensions = "Buttons",
-  #                 options = list(
-  #                   dom = "Bfrtip",
-  #                   buttons = list("csv"))
-  #                 )
-  # })
   
   # Lasso selection table
   output$barcode_table <- renderDT({
@@ -749,14 +715,24 @@ server <- function(input, output, session) {
                          by = c("y" = "coord_y",
                                 "x" = "coord_x")) %>%
         dplyr::select("pointNumber", "x", "y", "barcode")
-
+      
+      filename <- glue::glue("{sel_gene()}-shinyapp")
       # Return datatable with the csv option to save the table directly
-      DT::datatable(data = d,
-                    extensions = "Buttons",
-                    options = list(
-                      dom = "Bfrtip",
-                      buttons = list("csv")
-                    )
+      # Download options following this -> https://rstudio.github.io/DT/003-tabletools-buttons.html
+      # Also this -> https://github.com/rstudio/DT/issues/409
+      DT::datatable(
+        data = d,
+        extensions = c("Buttons"),
+        options = list(
+          dom = 'Bfrtip',
+          buttons =  list(list(extend = "csv", filename = filename))
+            # list("copy", "print", list(
+            #   extend = "collection",
+            #   buttons = c("csv", "excel", "pdf"),
+            #   filename = filename,
+            #   text = "Download"
+            # ))
+        )
       )
     }
   })
