@@ -13,7 +13,7 @@
 #' @param reduction Character string. Dimensionality reduction from which to extract the 2D coordinates. Default: umap.
 #' @param image Character string or NULL. When tech is sp, name of the image from which we want to extract the coordinates as found in names(object/@images), by default NULL.
 #' @param asfactors Character vector. Metadata columns to be converted to factors. Default: NULL.
-#' @param save Logical value. Save metadata and expression matrix objects as RDS files. Default: TRUE.
+#' @param save Logical value. Save metadata and expression matrix objects as RDS files. Default: FALSE.
 #' @param path Character string. Path to save output files if 'save = TRUE'. Default: working directory.
 #'
 #' @return Named list containing the joint metadata + 2D embeding and the expression matrix.
