@@ -34,7 +34,7 @@ seurat2shiny = function(
     reduction = "umap"             ,
     image     = NULL               ,
     asfactors = NULL               ,
-    save      = FALSE               ,
+    save      = TRUE               ,
     path      = "."                  # path = getwd()
 ) {
     suppressMessages( library(Seurat) );
