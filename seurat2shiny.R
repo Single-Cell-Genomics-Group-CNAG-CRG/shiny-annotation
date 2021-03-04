@@ -1,7 +1,7 @@
 #' This function takes in a Seurat 3.0 object and returns a named list with 2
 #' objects formated to be loaded in the ShinyApp:
 #'
-#'      1. Metadata + coordinates of the 2D embeding.
+#'      1. Metadata + coordinates of the 2D embedding.
 #'      2. Expression matrix of the selected slot.
 #'
 #' ShinyApp: https://github.com/Single-Cell-Genomics-Group-CNAG-CRG/shiny-annotation/blob/main/seurat2shiny.R
@@ -13,10 +13,10 @@
 #' @param reduction Character string. Dimensionality reduction from which to extract the 2D coordinates. Default: umap.
 #' @param image Character string or NULL. When tech is sp, name of the image from which we want to extract the coordinates as found in names(object/@images), by default NULL.
 #' @param asfactors Character vector. Metadata columns to be converted to factors. Default: NULL.
-#' @param save Logical value. Save metadata and expression matrix objects as RDS files. Default: TRUE.
+#' @param save Logical value. Save metadata and expression matrix objects as RDS files. Default: FALSE
 #' @param path Character string. Path to save output files if 'save = TRUE'. Default: working directory.
 #'
-#' @return Named list containing the joint metadata + 2D embeding and the expression matrix.
+#' @return Named list containing the joint metadata + 2D embedding and the expression matrix.
 #'
 #' @examples
 #' seurat2shiny( object = seurat_object, asfactors = c("plate", "replicate") )
@@ -34,7 +34,7 @@ seurat2shiny = function(
     reduction = "umap"             ,
     image     = NULL               ,
     asfactors = NULL               ,
-    save      = TRUE               ,
+    save      = FALSE               ,
     path      = "."                  # path = getwd()
 ) {
     suppressMessages( library(Seurat) );
