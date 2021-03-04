@@ -691,7 +691,12 @@ server <- function(input, output, session) {
   })
   
   # Lasso selection table
-  output$barcode_table <- renderDT({
+  output$barcode_table <- DT::renderDT(
+    # It is important here to set server = FALSE so that when we save the table in CSV format i saves ALL the entries. By default it is TRUE and it only saves those entries currently shown in the table!
+    # Note that your users might run into performance and memory issues using server=FALSE if your data table is very large.
+    # https://stackoverflow.com/questions/50508854/button-extension-to-download-all-data-or-only-visible-data
+    server = FALSE,
+    {
     # Read data from reactive observed slots
     metadata_df <- dfInput()
     metadata_df <- metadata_df %>%
@@ -726,6 +731,11 @@ server <- function(input, output, session) {
         options = list(
           dom = 'Bfrtip',
           buttons =  list(list(extend = "csv", filename = filename))
+          # buttons = list(list(
+          #   extend = 'collection',
+          #   buttons = c('csv', 'excel', 'pdf'),
+          #   text = 'Download'
+          # ))
             # list("copy", "print", list(
             #   extend = "collection",
             #   buttons = c("csv", "excel", "pdf"),
