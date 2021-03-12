@@ -242,13 +242,19 @@ server <- function(input, output, session) {
     updateSelectizeInput(session,
                          inputId = "gene_ls",
                          choices = c("", rownames(expr_mtrx)),
-                         selected = rownames(expr_mtrx)[1])
+                         selected = rownames(expr_mtrx)[1],
+                         # consider using server-side selectize for massively improved performance. See the Details section of the ?selectizeInput help topic.
+                         # The server-side selectize input uses R to process searching, and R will return the filtered data to selectize.
+                         server = TRUE)
     
     # Update filter gene
     updateSelectizeInput(session,
                          inputId = "gene_filt",
                          choices = rownames(expr_mtrx),
-                         selected = rownames(expr_mtrx)[1])
+                         selected = rownames(expr_mtrx)[1],
+                         # consider using server-side selectize for massively improved performance. See the Details section of the ?selectizeInput help topic.
+                         # The server-side selectize input uses R to process searching, and R will return the filtered data to selectize.
+                         server = TRUE)
     
     
     # Subset character/factor columns with <= 50 unique values
@@ -268,20 +274,29 @@ server <- function(input, output, session) {
                          inputId = "groupby",
                          choices = c("", 
                                      feat_sub),
-                         selected = feat_sub[1])
+                         selected = feat_sub[1],
+                         # consider using server-side selectize for massively improved performance. See the Details section of the ?selectizeInput help topic.
+                         # The server-side selectize input uses R to process searching, and R will return the filtered data to selectize.
+                         server = TRUE)
     
     # Update Filtering variable selection
     updateSelectizeInput(session,
                          inputId = "filter_var",
                          choices = c("", 
                                      feat_ch),
-                         selected = feat_ch[1])
+                         selected = feat_ch[1],
+                         # consider using server-side selectize for massively improved performance. See the Details section of the ?selectizeInput help topic.
+                         # The server-side selectize input uses R to process searching, and R will return the filtered data to selectize.
+                         server = TRUE)
     
     # Update gene_sel selection
     updateSelectizeInput(session,
                          inputId = "sel_gene",
                          choices = c("", rownames(expr_mtrx)),
-                         selected = rownames(expr_mtrx)[1])
+                         selected = rownames(expr_mtrx)[1],
+                         # consider using server-side selectize for massively improved performance. See the Details section of the ?selectizeInput help topic.
+                         # The server-side selectize input uses R to process searching, and R will return the filtered data to selectize.
+                         server = TRUE)
   })
   
   # Differential expression analysis update
@@ -303,7 +318,10 @@ server <- function(input, output, session) {
                          inputId = "de_var",
                          choices = c("", 
                                      de_vr),
-                         selected = de_vr[1])
+                         selected = de_vr[1],
+                         # consider using server-side selectize for massively improved performance. See the Details section of the ?selectizeInput help topic.
+                         # The server-side selectize input uses R to process searching, and R will return the filtered data to selectize.
+                         server = TRUE)
   })
   
   observe({
@@ -313,14 +331,20 @@ server <- function(input, output, session) {
                          inputId = "de_g1",
                          choices = c("",
                                      vr_groups),
-                         selected = vr_groups[1])
+                         selected = vr_groups[1],
+                         # consider using server-side selectize for massively improved performance. See the Details section of the ?selectizeInput help topic.
+                         # The server-side selectize input uses R to process searching, and R will return the filtered data to selectize.
+                         server = TRUE)
     
     # Update Filtering variable selection
     updateSelectizeInput(session,
                          inputId = "de_g2",
                          choices = c("", 
                                      vr_groups),
-                         selected = vr_groups[2])
+                         selected = vr_groups[2],
+                         # consider using server-side selectize for massively improved performance. See the Details section of the ?selectizeInput help topic.
+                         # The server-side selectize input uses R to process searching, and R will return the filtered data to selectize.
+                         server = TRUE)
   })
   
   # Independent observe event for Gene expression slider event input so it doesn't update all the rest  
