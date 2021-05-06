@@ -12,6 +12,7 @@ library(scattermore)
 library(DT)
 library(glue)
 library(viridis)
+library(Matrix)
 
 # Metadata dataframe set as NULL at the beginning to avoid showing error
 if (! exists("metadata_df")) metadata_df <- NULL
@@ -236,7 +237,8 @@ server <- function(input, output, session) {
     file2 <- input$data
     if( is.null( file2 ) ) { return() }
     tmp2_ds <- readRDS(file2$datapath)
-    expr_mtrx <<- as.matrix(tmp2_ds)
+    # Keep the count matrix sparse
+    expr_mtrx <<- Matrix::Matrix(data = tmp2_ds, sparse = TRUE)
     
     # Update marker selection
     updateSelectizeInput(session,
