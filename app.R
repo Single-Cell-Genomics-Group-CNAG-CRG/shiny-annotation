@@ -91,7 +91,7 @@ ui <- fluidPage(
      # Slider to filter by gene expression
      sliderInput("expression_slider",
                  label = "Gene expression filter",
-                 min = 0, 
+                 min = -5, 
                  max = 10,
                  step = 0.5,
                  value = c(-5, 10)),
@@ -193,7 +193,7 @@ ui <- fluidPage(
                                              label = "Update gene"),
                    ),
                    mainPanel(
-                     plotlyOutput("sel_plot"),
+                     plotlyOutput("sel_plot", height = "800", width = "800"),
                      DTOutput("barcode_table")
                      )
                  )
@@ -231,14 +231,15 @@ server <- function(input, output, session) {
     # Read marker list
     file1 <- input$metadata
     if (is.null(file1) ) { return() }
-    tmp1_ds <- readRDS(file1$datapath)
-    metadata_df <<- tmp1_ds
+    # tmp1_ds <- readRDS(file1$datapath)
+    metadata_df <<- readRDS(file1$datapath)
 
     file2 <- input$data
     if( is.null( file2 ) ) { return() }
-    tmp2_ds <- readRDS(file2$datapath)
+    # tmp2_ds <- readRDS(file2$datapath)
     # Keep the count matrix sparse
-    expr_mtrx <<- Matrix::Matrix(data = tmp2_ds, sparse = TRUE)
+    expr_mtrx <<- readRDS(file2$datapath) %>%
+      Matrix::Matrix(data = ., sparse = TRUE)
     
     # Update marker selection
     updateSelectizeInput(session,
@@ -519,14 +520,15 @@ server <- function(input, output, session) {
     
     # Read data from reactive observed slots
     metadata_df <- dfInput()
-    expr_mtrx <- exprInput()
+    # expr_mtrx <- exprInput()
     
     # Subset by gene expression
     ## Added -0.1 and +0.1 since I think the slider input rounds the number and the extreme numbers might be ignored
-    mask <- expr_mtrx[gene_filt(), ] >= input$expression_slider[1] - 0.1 &
-            expr_mtrx[gene_filt(), ] <= input$expression_slider[2] + 0.1
+    mask <- exprInput()[gene_filt(), ] >= input$expression_slider[1] - 0.1 &
+      exprInput()[gene_filt(), ] <= input$expression_slider[2] + 0.1
     
-    expr_mtrx <- expr_mtrx[, mask]
+    # Drop = FALSE to keep matrix structure when only 1 row is subsetted
+    expr_mtrx <- exprInput()[gene_list(), mask, drop = FALSE]
     metadata_df <- metadata_df[mask, ]
 
     ## Plot all genes
@@ -537,7 +539,8 @@ server <- function(input, output, session) {
                                                y = metadata_df[, "coord_y"])) +
           scattermore::geom_scattermore(aes(x,
                                             y,
-                                            color = expr_mtrx[gene, ]),
+                                            color = expr_mtrx[gene, ]
+                                            ),
                                         pointsize = as.numeric(input$size),
                                         alpha = 0.7,
                                         pixels = c(1000,1000),
@@ -561,19 +564,19 @@ server <- function(input, output, session) {
           feat_plt <- feat_plt +
             ggplot2::scale_color_gradient(low = "lightgrey",
                                           high = "blue",
-                                          limits = c(min(expr_mtrx[gene, ]),
-                                                     max(expr_mtrx[gene, ])))
+                                          limits = c(min(exprInput()[gene, ]),
+                                                     max(exprInput()[gene, ])))
         } else if (input$feat_col %in% c("viridis", "magma")) {
           feat_plt <- feat_plt +
             ggplot2::scale_colour_viridis_c(option = input$feat_col,
-                                            limits = c(min(expr_mtrx[gene, ]),
-                                                       max(expr_mtrx[gene, ])))
+                                            limits = c(min(exprInput()[gene, ]),
+                                                       max(exprInput()[gene, ])))
         } else if (input$feat_col == "heat") {
           feat_plt <- feat_plt +
             ggplot2::scale_color_gradient(low = "#FFFF80FF",
                                           high = "#FF0000FF",
-                                          limits = c(min(expr_mtrx[gene, ]),
-                                                     max(expr_mtrx[gene, ])))
+                                          limits = c(min(exprInput()[gene, ]),
+                                                     max(exprInput()[gene, ])))
         }
         
       } else {
@@ -595,15 +598,16 @@ server <- function(input, output, session) {
     
     # Read data from reactive observed slots
     metadata_df <- dfInput()
-    expr_mtrx <- exprInput()
+    # expr_mtrx <- exprInput()
     
     # Subset by gene expression
     ## Added -0.1 and +0.1 since I think the slider input rounds the number and the extreme numbers might be ignored
-    mask1 <- expr_mtrx[gene_filt(), ] >= input$expression_slider[1] - 0.1
-    mask2 <- expr_mtrx[gene_filt(), ] <= input$expression_slider[2] + 0.1
+    mask1 <- exprInput()[gene_filt(), ] >= input$expression_slider[1] - 0.1
+    mask2 <- exprInput()[gene_filt(), ] <= input$expression_slider[2] + 0.1
     mask <- mask1 & mask2
     
-    expr_mtrx <- expr_mtrx[, mask]
+    # expr_mtrx <- expr_mtrx[, mask]
+    expr_mtrx <- exprInput()[gene_list(), mask, drop = FALSE]
     metadata_df <- metadata_df[mask, ]
     
     
@@ -619,8 +623,8 @@ server <- function(input, output, session) {
                                  color = metadata_df[, groupby_var()],
                                  fill = metadata_df[, groupby_var()]),
                              alpha = 0.6) +
-        ggplot2::ylim(c(min(expr_mtrx[gene, ]),
-                        max(expr_mtrx[gene, ]))) +
+        ggplot2::ylim(c(min(exprInput()[gene, ]),
+                        max(exprInput()[gene, ]))) +
         ggplot2::scale_color_manual(values = set2_expand) +
         ggplot2::scale_fill_manual(values = set2_expand) +
         ggplot2::theme_classic() +
@@ -689,12 +693,12 @@ server <- function(input, output, session) {
     
     # Read data from reactive observed slots
     metadata_df <- dfInput()
-    expr_mtrx <- exprInput()
+    # expr_mtrx <- exprInput()
     
     p <- ggplot2::ggplot(data = metadata_df) +
       ggplot2::geom_point(ggplot2::aes(x = coord_x,
                                        y = coord_y,
-                                       color = expr_mtrx[sel_gene(), ],
+                                       color = exprInput()[sel_gene(), ],
                                        text = barcode),
                           size = as.numeric(input$size)) +
       ggplot2::theme_classic() +
@@ -709,8 +713,8 @@ server <- function(input, output, session) {
           face = "bold")) +
       ggplot2::scale_color_gradient(low = "lightgrey",
                                     high = "blue",
-                                    limits = c(min(expr_mtrx[sel_gene(), ]),
-                                               max(expr_mtrx[sel_gene(), ])))
+                                    limits = c(min(exprInput()[sel_gene(), ]),
+                                               max(exprInput()[sel_gene(), ])))
     
     ggplotly(p, tooltip = "text") %>%
       layout(dragmode = "lasso")
@@ -777,4 +781,4 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 
 # Code profiling
-# profvis(runApp())
+# profvis::profvis(runApp())
