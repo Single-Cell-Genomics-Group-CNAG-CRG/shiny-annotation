@@ -86,7 +86,8 @@ seurat2shiny = function(
     metadata <- merge(x = metadata, y = embeds, by = "row.names");
     names(metadata)[1] <-  "barcode"; # names(metadata)[names(metadata) == "Row.names"] = "barcode";
     rownames(metadata) <- metadata$barcode
-
+    metadata$barcode <- as.character(metadata$barcode)
+    
     # Extract expression data.
     # expression = as.matrix( Seurat::GetAssayData(object = object, slot = slot, assay = assay) );
     expression = Seurat::GetAssayData(object = object, slot = slot, assay = assay);

@@ -13,7 +13,7 @@ library(DT)
 library(glue)
 library(viridis)
 library(Matrix)
-
+library(shinythemes)
 # Metadata dataframe set as NULL at the beginning to avoid showing error
 if (! exists("metadata_df")) metadata_df <- NULL
 if (! exists("expr_mtrx")) expr_mtrx <- NULL
@@ -25,7 +25,7 @@ if (! exists("expr_mtrx")) expr_mtrx <- NULL
 ################################################## INTERFACE #####################################################
 ##################################################################################################################
 ##################################################################################################################
-ui <- fluidPage(
+ui <- fluidPage(theme = shinytheme("sandstone"),
   sidebarLayout(fluid = TRUE,
     
     #########################
@@ -400,7 +400,7 @@ server <- function(input, output, session) {
   })
 
   exprInput <- reactive({
-    ## subsetting is a bit tricky here to id the column on which to subset
+    # subsetting is a bit tricky here to id the column on which to subset
     keep_id <- metadata_df[metadata_df[, filter_var()] %in% apply_grp(), "barcode"]
     expr_mtrx[, keep_id]
   })
@@ -517,7 +517,7 @@ server <- function(input, output, session) {
   
   # Feature plot
   output$FeaturePlot <- renderPlot({
-    
+
     # Read data from reactive observed slots
     metadata_df <- dfInput()
     # expr_mtrx <- exprInput()
