@@ -400,9 +400,16 @@ server <- function(input, output, session) {
   })
 
   exprInput <- reactive({
+    # This chunk can give errors when keep_id is of class AsIs
+    # > class(metadata_df$barcode)
+    # [1] "AsIs"
+    # Error in mtrx[, keep_id] : 
+    #   invalid or not-yet-implemented 'Matrix' subsetting
+    # To solve this set keep_id as a character
+    
     # subsetting is a bit tricky here to id the column on which to subset
     keep_id <- metadata_df[metadata_df[, filter_var()] %in% apply_grp(), "barcode"]
-    expr_mtrx[, keep_id]
+    expr_mtrx[, as.character(keep_id)]
   })
   
   # Differential expression
