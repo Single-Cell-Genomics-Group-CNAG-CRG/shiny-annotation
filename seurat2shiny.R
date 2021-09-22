@@ -25,7 +25,6 @@
 #'
 #' @export
 
-
 seurat2shiny = function(
     object                         ,
     tech      = c("sc", "sp")      ,
@@ -58,8 +57,8 @@ seurat2shiny = function(
     
     # Check Which technology it is processing
     if (tech == "sc") {
-        # Extract 2D coordinates.
-        embeds <- as.data.frame(object@reductions[[reduction]]@cell.embeddings);
+        # Extract 2D coordinates. Keep only first 2 dimensions, remove the rest if any.
+        embeds <- as.data.frame(object@reductions[[reduction]]@cell.embeddings)[1:2];
         names(embeds) <- c("coord_x", "coord_y");
     } else if (tech == "sp") {
         # If the image is null select the first one
@@ -87,6 +86,8 @@ seurat2shiny = function(
     names(metadata)[1] <-  "barcode"; # names(metadata)[names(metadata) == "Row.names"] = "barcode";
     rownames(metadata) <- metadata$barcode
     metadata$barcode <- as.character(metadata$barcode)
+    # Reset barcode order which is shuffled in merge
+    metadata <- metadata[rownames(object@meta.data), ]
     
     # Extract expression data.
     # expression = as.matrix( Seurat::GetAssayData(object = object, slot = slot, assay = assay) );
