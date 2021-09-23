@@ -431,10 +431,13 @@ server <- function(input, output, session) {
     
     # If all the rownames in metadata are in the columns of expression matrix go ahead,
     # if not and barcode is a column in metadata assign it to rownames
-    if(sum(rownames(metadata_df) %in% colnames(expr_mtrx)) != nrow(metadata_df) &
-       "barcode" %in% colnames(metadata_df)) {
-      rownames(metadata_df) <- metadata_df$barcode
-    }
+    # if(sum(rownames(metadata_df) %in% colnames(expr_mtrx)) != nrow(metadata_df) &
+    #    "barcode" %in% colnames(metadata_df)) {
+    #   rownames(metadata_df) <- metadata_df$barcode
+    # }
+    
+    rownames(metadata_df) <- metadata_df$barcode
+    metadata_df <- metadata_df[colnames(expr_mtrx), ]
     
     se_obj <- Seurat::CreateSeuratObject(counts = expr_mtrx,
                                          meta.data = metadata_df)
